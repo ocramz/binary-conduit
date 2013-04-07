@@ -1,13 +1,17 @@
 name:                conduit-binary
 version:             1.0
 synopsis:            data serialization/deserialization conduit library
--- description:         
+description:         The binary-conduit package.
+      Allow binary serialization using iterative conduit interface.
 license:             MIT
 license-file:        LICENSE
 author:              Alexander Vershilov
 maintainer:          alexander.vershilov@gmail.com
 copyright:           2013 Alexander Vershilov
-category:            Data
+category:            Conduit
+stability:           Experimental
+homepage:            http://github.com/qnikst/binary-conduit
+bug-reports:         http://github.com/qnikst/binary-conduit/issues
 build-type:          Simple
 cabal-version:       >=1.8
 
@@ -15,8 +19,12 @@ library
   exposed-modules:     
     Data.Conduit.Serialization.Binary
   -- other-modules:       
-  build-depends:       base >=4.4 && <4.7,
+  build-depends:       base >=4 && <5,
                        conduit >= 1.0 && < 1.1,
                        bytestring >= 0.9 && < 10.3,
                        binary >= 0.6 && < 0.8
   ghc-options: -Wall -O2
+
+source-repository head
+  type: git
+  location: git://github.com/qnikst/binary-conduit/
