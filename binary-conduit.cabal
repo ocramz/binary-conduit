@@ -25,6 +25,13 @@ library
                        binary >= 0.6 && < 0.8
   ghc-options: -Wall -O2
 
+test-suite test-binary-conduit
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs: test/
+  build-depends: base, QuickCheck, quickcheck-assertions, conduit-binary, 
+    hspec, conduit, binary, bytestring
+
 source-repository head
   type: git
   location: git://github.com/qnikst/binary-conduit/
