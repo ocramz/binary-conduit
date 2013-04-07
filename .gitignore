@@ -1,0 +1,5 @@
+/cabal-dev/
+/dist/
+.o
+.hi
+.dump-simpl
