@@ -1,5 +1,8 @@
 /cabal-dev/
 /dist/
-.o
-.hi
-.dump-simpl
+*.o
+*.hi
+*.dump-simpl
+*.tix
+/hpc-markup/
+/.hpc/
