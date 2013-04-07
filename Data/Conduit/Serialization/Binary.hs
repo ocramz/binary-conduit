@@ -41,15 +41,18 @@ conduitEncode = CL.map put =$= conduitPut
 
 -- | Runs getter repeadetelly on a input stream
 conduitGet :: (Binary b, MonadThrow m) => Get b -> Conduit ByteString m b
-conduitGet g =
-    conduit (runGetIncremental g)
+conduitGet g = start
   where 
+    start = do mx <- await
+               case mx of
+                  Nothing -> return ()
+                  Just x -> conduit (runGetIncremental g `pushChunk` x)
     conduit p = await >>= go . flip (maybe pushEndOfInput (flip pushChunk)) p
         where
-          go (Done bs _ v)  = do yield v
-                                 go (runGetIncremental get `pushChunk` bs)
-          go (Fail u o e)   = monadThrow (ParseError u o e)
-          go n@(Partial _)  = conduit n 
+          go (Done bs _ v) = do yield v
+                                go (runGetIncremental get `pushChunk` bs)
+          go (Fail u o e)  = monadThrow (ParseError u o e)
+          go (Partial _)   = start
 
 -- | Runs putter repeadelty on a input stream
 conduitPut :: MonadThrow m => Conduit Put m ByteString
