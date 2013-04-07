@@ -31,7 +31,7 @@ data ParseError = ParseError
 
 instance Exception ParseError
 
--- | Runs default decoder repeadetly on a input stream
+-- | Runs default 'Decoder' repeadetly on a input stream
 conduitDecode :: (Binary b, MonadThrow m) => Conduit ByteString m b
 conduitDecode = conduitGet get
 
@@ -64,9 +64,11 @@ conduitPut = conduit
                      Just x  -> do sourcePut x $$ CL.mapM_ yield
                                    conduit
 
+-- | Create stream of strict bytestring from 'Put' value
 sourcePut :: (MonadThrow m) => Put -> Producer m ByteString
 sourcePut = CL.sourceList . LBS.toChunks . runPut
 
+-- | Decode message from input stream
 sinkGet :: (Binary b, MonadThrow m) => Get b -> Consumer ByteString m b
 sinkGet f = sink (runGetIncremental f)
   where
