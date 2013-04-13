@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ ! -f 'binary-conduit.cabal' ]; then
    echo -n "Can't find binary-conduit.cabal; please run this script as"
-   echo -n " ./scripts/run-coverage from within the banary-conduit source"
+   echo -n " ./scripts/run-coverage from within the binary-conduit source"
    echo " directory"
    exit 1
 fi
@@ -29,4 +29,3 @@ rm Main.tix
 
 hpc markup --srcdir=. Main.tix --destdir=hpc-markup > /dev/null
 hpc report --srcdir=. Main.tix
-

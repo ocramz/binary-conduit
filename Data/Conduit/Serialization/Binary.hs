@@ -24,25 +24,29 @@ import           Data.Typeable
 
 
 data ParseError = ParseError
-      { uncomsumed :: ByteString  -- ^ uncomsumed data
-      , offset     :: ByteOffset  -- ^ current offset
-      , content    :: String      -- ^ error content
+      { unconsumed :: ByteString
+        -- ^ Data left unconsumed in single stream input value.
+
+      , offset     :: ByteOffset
+        -- ^ Number of bytes consumed from single stream input value.
+
+      , content    :: String      -- ^ Error content.
       } deriving (Show, Typeable)
 
 instance Exception ParseError
 
--- | Runs default 'Decoder' repeadetly on a input stream
+-- | Runs default 'Decoder' repeatedly on a input stream.
 conduitDecode :: (Binary b, MonadThrow m) => Conduit ByteString m b
 conduitDecode = conduitGet get
 
--- | Runs default encoder on a input stream
+-- | Runs default encoder on a input stream.
 conduitEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
 conduitEncode = CL.map put =$= conduitPut
 
--- | Runs getter repeadetelly on a input stream
+-- | Runs getter repeatedly on a input stream.
 conduitGet :: (Binary b, MonadThrow m) => Get b -> Conduit ByteString m b
 conduitGet g = start
-  where 
+  where
     start = do mx <- await
                case mx of
                   Nothing -> return ()
@@ -54,21 +58,21 @@ conduitGet g = start
           go (Fail u o e)  = monadThrow (ParseError u o e)
           go (Partial _)   = start
 
--- | Runs putter repeadelty on a input stream
+-- | Runs putter repeatedly on a input stream.
 conduitPut :: MonadThrow m => Conduit Put m ByteString
-conduitPut = conduit 
-  where 
+conduitPut = conduit
+  where
     conduit = do mx <- await
                  case mx of
                      Nothing -> return ()
                      Just x  -> do sourcePut x $$ CL.mapM_ yield
                                    conduit
 
--- | Create stream of strict bytestring from 'Put' value
+-- | Create stream of strict bytestrings from 'Put' value.
 sourcePut :: (MonadThrow m) => Put -> Producer m ByteString
 sourcePut = CL.sourceList . LBS.toChunks . runPut
 
--- | Decode message from input stream
+-- | Decode message from input stream.
 sinkGet :: (Binary b, MonadThrow m) => Get b -> Consumer ByteString m b
 sinkGet f = sink (runGetIncremental f)
   where
