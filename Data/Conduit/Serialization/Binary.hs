@@ -44,7 +44,7 @@ conduitEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
 conduitEncode = CL.map put =$= conduitPut
 
 -- | Runs getter repeatedly on a input stream.
-conduitGet :: (Binary b, MonadThrow m) => Get b -> Conduit ByteString m b
+conduitGet :: MonadThrow m => Get b -> Conduit ByteString m b
 conduitGet g = start
   where
     start = do mx <- await
@@ -54,7 +54,7 @@ conduitGet g = start
     conduit p = await >>= go . flip (maybe pushEndOfInput (flip pushChunk)) p
         where
           go (Done bs _ v) = do yield v
-                                go (runGetIncremental get `pushChunk` bs)
+                                go (runGetIncremental g `pushChunk` bs)
           go (Fail u o e)  = monadThrow (ParseError u o e)
           go (Partial _)   = start
 
