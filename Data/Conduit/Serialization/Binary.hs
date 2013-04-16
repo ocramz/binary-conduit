@@ -16,6 +16,7 @@ import           Data.Binary
 import           Data.Binary.Get
 import           Data.Binary.Put
 import           Data.ByteString (ByteString)
+import           Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as LBS
 
 import           Data.Conduit
@@ -54,9 +55,11 @@ conduitGet g = start
     conduit p = await >>= go . flip (maybe pushEndOfInput (flip pushChunk)) p
         where
           go (Done bs _ v) = do yield v
-                                go (runGetIncremental g `pushChunk` bs)
+                                if BS.null bs
+                                    then start
+                                    else go (runGetIncremental g `pushChunk` bs)
           go (Fail u o e)  = monadThrow (ParseError u o e)
-          go (Partial _)   = start
+          go (Partial n)   = await >>= (go . n)
 
 -- | Runs putter repeatedly on a input stream.
 conduitPut :: MonadThrow m => Conduit Put m ByteString
