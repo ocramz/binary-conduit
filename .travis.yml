@@ -1,0 +1,9 @@
+language: "haskell"
+install:
+      - "cabal install HUnit async hspec"
+      - "cabal configure --enable-tests"
+      - "cabal build"
+      - "cabal test"
+      - "cabal install"
+notifications:
+    email: true
