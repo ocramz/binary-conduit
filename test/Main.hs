@@ -1,4 +1,4 @@
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Data.Binary
 import Data.Binary.Put
 import Data.ByteString as BS
@@ -43,25 +43,46 @@ prop_sink (a,b) = monadicIO $ do
         dec :: (Binary a, MonadThrow m) => a -> Conduit ByteString m a
         dec _ = conduitDecode
 
-prop_part :: [Int] -> Property
-prop_part xs = monadicIO $ do
+prop_part2 :: [Int] -> Property
+prop_part2 xs = monadicIO $ do
     let m = BS.concat . Prelude.concatMap (LBS.toChunks . runPut . put) $ xs
-    forM_ [0..BS.length m] $ \l -> do
-        let (l1,l2) = BS.splitAt l m
-        Right a <- runExceptionT $ CL.sourceList [l1,l2]
-                                 $= conduitDecode
-                                 $$ CL.consume
-        assert $ xs == a
+    when (Prelude.length xs>0) $ do
+        forM_ [0..BS.length m] $ \l -> do
+            let (l1,l2) = BS.splitAt l m
+            ma <- runExceptionT $ CL.sourceList [l1,l2]
+                                $= conduitDecode
+                                $$ CL.consume
+            case ma of
+                Left _  -> fail "exception in conduit"
+                Right a -> stop (xs ?== a)
+
+prop_part3 :: [Int] -> Property
+prop_part3 xs = monadicIO $ do
+    let m = BS.concat . Prelude.concatMap (LBS.toChunks . runPut . put) $ xs
+    when (Prelude.length xs>0) $ do
+      forM_ [1..BS.length m] $ \l -> do
+          let (l1,l2) = BS.splitAt l m
+          when (BS.length l2 > 0) $ do
+            forM_ [1..BS.length l2] $ \l' -> do
+                let (l2_1,l2_2) = BS.splitAt l' l2
+                ma <- runExceptionT $ CL.sourceList [l1,l2_1,l2_2]
+                                    $= conduitDecode
+                                    $$ CL.consume
+                case ma of
+                    Left _ -> fail "exception in conduit"
+                    Right a -> stop $ xs ?== a
 
 main = hspec $ do
     describe "QC properties: conduitEncode =$= conduitDecode == id" $ do
-        prop "int" $ (prop_eq :: [Int] -> Property)
-        prop "string" $ (prop_eq :: [String] -> Property)
-        prop "maybe int" $ (prop_eq :: [Maybe Int] -> Property)
+        prop "int"               $ (prop_eq :: [Int] -> Property)
+        prop "string"            $ (prop_eq :: [String] -> Property)
+        prop "maybe int"         $ (prop_eq :: [Maybe Int] -> Property)
         prop "either int string" $ (prop_eq :: [Either Int String] -> Property)
-        prop "ab" $ (prop_sink :: (Int,Int) -> Property)
-        prop "ab" $ (prop_sink :: (String,String) -> Property)
-        prop "partial list" $ (prop_part)
+        prop "(Int,Int)"         $ (prop_sink :: (Int,Int) -> Property)
+        prop "(String,String)"   $ (prop_sink :: (String,String) -> Property)
+    describe "QC properties partial lists" $ do
+        prop "break data in 2 parts" $ (prop_part2)
+        prop "break data in 3 parts" $ (prop_part3)
     describe "HUnit properties:" $ do
       it "decodes message splitted to chunks" $ do
           let i = -32
