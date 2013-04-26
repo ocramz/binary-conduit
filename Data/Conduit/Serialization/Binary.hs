@@ -15,7 +15,7 @@ import           Control.Exception
 import           Data.Binary
 import           Data.Binary.Get
 import           Data.Binary.Put
-import           Data.ByteString (ByteString)
+-- import           Data.ByteString (ByteString)
 import           Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as LBS
 
@@ -51,15 +51,14 @@ conduitGet g = start
     start = do mx <- await
                case mx of
                   Nothing -> return ()
-                  Just x -> conduit (runGetIncremental g `pushChunk` x)
+                  Just x -> go (runGetIncremental g `pushChunk` x)
     conduit p = await >>= go . flip (maybe pushEndOfInput (flip pushChunk)) p
-        where
-          go (Done bs _ v) = do yield v
-                                if BS.null bs
-                                    then start
-                                    else go (runGetIncremental g `pushChunk` bs)
-          go (Fail u o e)  = monadThrow (ParseError u o e)
-          go (Partial n)   = await >>= (go . n)
+    go (Done bs _ v) = do yield v
+                          if BS.null bs
+                            then start
+                            else go (runGetIncremental g `pushChunk` bs)
+    go (Fail u o e)  = monadThrow (ParseError u o e)
+    go (Partial n)   = await >>= (go . n)
 
 -- | Runs putter repeatedly on a input stream.
 conduitPut :: MonadThrow m => Conduit Put m ByteString
