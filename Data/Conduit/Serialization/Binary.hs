@@ -69,6 +69,19 @@ conduitPut = conduit
                      Nothing -> return ()
                      Just x  -> do sourcePut x $$ CL.mapM_ yield
                                    conduit
+                                   
+-- | Runs putter repeatedly on a input stream.
+-- Returns a lazy butestring so it's possible to use vectorized
+-- IO on the result either by calling' LBS.toChunks' or by 
+-- calling 'Network.Socket.ByteString.Lazy.send'
+conduitPutLBS :: MonadThrow m => Conduit Put m LBS.ByteString
+conduitPutLBS = conduit
+  where
+      conduit = do mx <- await
+                   case mx of
+                       Nothing -> return ()
+                       Just x  -> do yield (runPut x)
+                                     conduit
 
 -- | Create stream of strict bytestrings from 'Put' value.
 sourcePut :: (MonadThrow m) => Put -> Producer m ByteString
