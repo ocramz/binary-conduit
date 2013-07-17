@@ -1,10 +1,14 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE CPP #-}
 module Data.Conduit.Serialization.Binary
   ( conduitDecode
   , conduitEncode
   , conduitGet
   , conduitPut
+  , conduitPutList
+  , conduitPutLBS
+  , conduitPutMany
   , sourcePut
   , sinkGet
   , ParseError(..)
@@ -15,13 +19,13 @@ import           Control.Exception
 import           Data.Binary
 import           Data.Binary.Get
 import           Data.Binary.Put
--- import           Data.ByteString (ByteString)
 import           Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as LBS
 
 import           Data.Conduit
 import qualified Data.Conduit.List    as CL
 import           Data.Typeable
+import qualified Data.Vector          as V
 
 
 data ParseError = ParseError
@@ -52,7 +56,6 @@ conduitGet g = start
                case mx of
                   Nothing -> return ()
                   Just x -> go (runGetIncremental g `pushChunk` x)
-    conduit p = await >>= go . flip (maybe pushEndOfInput (flip pushChunk)) p
     go (Done bs _ v) = do yield v
                           if BS.null bs
                             then start
@@ -60,28 +63,34 @@ conduitGet g = start
     go (Fail u o e)  = monadThrow (ParseError u o e)
     go (Partial n)   = await >>= (go . n)
 
+-- \o/
+#define conduitPutGeneric(name,yi) \
+name = conduit \
+  where \
+    conduit = do {mx <- await;\
+                 case mx of;\
+                    Nothing -> return ();\
+                    Just x  -> do { yi ; conduit}}
+
 -- | Runs putter repeatedly on a input stream.
 conduitPut :: MonadThrow m => Conduit Put m ByteString
-conduitPut = conduit
-  where
-    conduit = do mx <- await
-                 case mx of
-                     Nothing -> return ()
-                     Just x  -> do sourcePut x $$ CL.mapM_ yield
-                                   conduit
-                                   
+conduitPutGeneric(conduitPut, (sourcePut x $$ CL.mapM_ yield))
+
 -- | Runs putter repeatedly on a input stream.
 -- Returns a lazy butestring so it's possible to use vectorized
 -- IO on the result either by calling' LBS.toChunks' or by 
--- calling 'Network.Socket.ByteString.Lazy.send'
+-- calling 'Network.Socket.ByteString.Lazy.send'.
 conduitPutLBS :: MonadThrow m => Conduit Put m LBS.ByteString
-conduitPutLBS = conduit
-  where
-      conduit = do mx <- await
-                   case mx of
-                       Nothing -> return ()
-                       Just x  -> do yield (runPut x)
-                                     conduit
+conduitPutGeneric(conduitPutLBS, yield (runPut x))
+
+-- | Vectorized variant of 'conduitPut' returning list contains
+-- all chunks from one element representation
+conduitPutList :: MonadThrow m => Conduit Put m [ByteString]
+conduitPutGeneric(conduitPutList, yield (LBS.toChunks (runPut x)))
+
+-- | Vectorized variant of 'conduitPut'.
+conduitPutMany :: MonadThrow m => Conduit Put m (V.Vector ByteString)
+conduitPutGeneric(conduitPutMany, yield (V.fromList (LBS.toChunks (runPut x))))
 
 -- | Create stream of strict bytestrings from 'Put' value.
 sourcePut :: (MonadThrow m) => Put -> Producer m ByteString
