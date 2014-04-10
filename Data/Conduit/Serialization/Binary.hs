@@ -26,6 +26,9 @@ import           Data.Conduit
 import qualified Data.Conduit.List    as CL
 import           Data.Typeable
 import qualified Data.Vector          as V
+import           Control.Monad.Trans.Resource 
+     (MonadThrow
+     , monadThrow)
 
 
 data ParseError = ParseError
