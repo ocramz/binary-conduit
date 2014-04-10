@@ -12,6 +12,7 @@ import Test.QuickCheck.Assertions
 import Test.QuickCheck.Property
 import Test.QuickCheck.Monadic
 import Test.QuickCheck
+import Control.Monad.Trans.Resource 
 
 -- | check conduitEncode =$= conduitDecode == id
 prop_eq :: (Binary a,Eq a) => [a] -> Property

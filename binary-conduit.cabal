@@ -31,7 +31,7 @@ test-suite test-binary-conduit
   main-is: Main.hs
   hs-source-dirs: test/
   build-depends: base, QuickCheck, quickcheck-assertions, binary-conduit, 
-    hspec, conduit, binary, bytestring
+    hspec, conduit, binary, bytestring, resourcet
 
 source-repository head
   type: git
