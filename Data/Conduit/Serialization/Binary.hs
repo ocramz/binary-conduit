@@ -96,11 +96,11 @@ conduitPutMany :: MonadThrow m => Conduit Put m (V.Vector ByteString)
 conduitPutGeneric(conduitPutMany, yield (V.fromList (LBS.toChunks (runPut x))))
 
 -- | Create stream of strict bytestrings from 'Put' value.
-sourcePut :: (MonadThrow m) => Put -> Producer m ByteString
+sourcePut :: MonadThrow m => Put -> Producer m ByteString
 sourcePut = CL.sourceList . LBS.toChunks . runPut
 
 -- | Decode message from input stream.
-sinkGet :: (Binary b, MonadThrow m) => Get b -> Consumer ByteString m b
+sinkGet :: MonadThrow m => Get b -> Consumer ByteString m b
 sinkGet f = sink (runGetIncremental f)
   where
       sink (Done bs _ v)  = leftover bs >> return v
