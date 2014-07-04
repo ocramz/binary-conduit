@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+import Control.Applicative
 import Control.Monad (forM_, when)
 import Data.Binary
 import Data.Binary.Put
@@ -13,6 +15,7 @@ import Test.QuickCheck.Property
 import Test.QuickCheck.Monadic
 import Test.QuickCheck
 import Control.Monad.Trans.Resource 
+import GHC.Generics
 
 -- | check conduitEncode =$= conduitDecode == id
 prop_eq :: (Binary a,Eq a) => [a] -> Property
@@ -73,6 +76,23 @@ prop_part3 xs = monadicIO $ do
                     Left _ -> fail "exception in conduit"
                     Right a -> stop $ xs ?== a
 
+
+data A = A ByteString ByteString deriving (Eq, Show, Generic)
+
+instance Binary A
+instance Arbitrary A where
+  arbitrary = A <$> fmap BS.pack arbitrary
+                <*> fmap BS.pack arbitrary
+
+
+prop_eq_plus :: (Binary a, Eq a) => [a] -> Property
+prop_eq_plus xs = monadicIO $ do
+   x <- runExceptionT $ CL.sourceList xs $= CL.map encode =$= CL.map LBS.toStrict $$ CL.consume
+   y <- runExceptionT $ CL.sourceList xs $= conduitEncode $$ CL.consume
+   case liftA2 (?==) x y of
+     Left _  -> fail "exception in conduit"
+     Right a -> stop a
+
 main = hspec $ do
     describe "QC properties: conduitEncode =$= conduitDecode == id" $ do
         prop "int"               $ (prop_eq :: [Int] -> Property)
@@ -81,9 +101,16 @@ main = hspec $ do
         prop "either int string" $ (prop_eq :: [Either Int String] -> Property)
         prop "(Int,Int)"         $ (prop_sink :: (Int,Int) -> Property)
         prop "(String,String)"   $ (prop_sink :: (String,String) -> Property)
+	prop "A"                 $ (prop_eq   :: [A] -> Property)
     describe "QC properties partial lists" $ do
         prop "break data in 2 parts" $ (prop_part2)
         prop "break data in 3 parts" $ (prop_part3)
+    describe "QC properites: CL.conduitEncode returns a correct chunks" $ do
+        prop "int"               $ (prop_eq_plus :: [Int] -> Property)
+        prop "string"            $ (prop_eq_plus :: [String] -> Property)
+        prop "maybe int"         $ (prop_eq_plus :: [Maybe Int] -> Property)
+        prop "either int string" $ (prop_eq_plus :: [Either Int String] -> Property)
+	prop "A"                 $ (prop_eq_plus :: [A] -> Property)
     describe "HUnit properties:" $ do
       it "decodes message splitted to chunks" $ do
           let i = -32
@@ -100,3 +127,4 @@ main = hspec $ do
           x' <- CL.sourceList [ls1,ls2] $= conduitDecode $$ CL.consume
           x `shouldBe` is++is
           x' `shouldBe` is
+         

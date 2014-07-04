@@ -48,8 +48,29 @@ conduitDecode :: (Binary b, MonadThrow m) => Conduit ByteString m b
 conduitDecode = conduitGet get
 
 -- | Runs default encoder on a input stream.
+--
+-- This function produces a stream of bytes where for each input
+-- value you will have a number of 'ByteString's, and no boundary
+-- between different values. 
 conduitEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
 conduitEncode = CL.map put =$= conduitPut
+
+
+-- | Runs default encoder on input stream.
+--
+-- This function produces a ByteString per each incomming packet,
+-- it may be useful in datagram based protocols.
+-- Function maintains following property
+--
+-- >   'conduitMsgEncode' xs == 'CL.map' 'Data.ByteString.encode' =$= 'CL.map' 'LBS.toStrict'
+--
+-- This invariant is maintaind by the cost of additional data copy,
+-- so if you packets can be serialized to the large data chunks or
+-- you interested in iterative packet serialization
+-- concider using 'conduitPutList' or 'conduitPutMany'
+--
+conduitMsgEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
+conduitMsgEncode = CL.map put =$= conduitMsg
 
 -- | Runs getter repeatedly on a input stream.
 conduitGet :: MonadThrow m => Get b -> Conduit ByteString m b
@@ -75,9 +96,13 @@ name = conduit \
                     Nothing -> return ();\
                     Just x  -> do { yi ; conduit}}
 
--- | Runs putter repeatedly on a input stream.
+-- | Runs putter repeatedly on a input stream, returns an output stream.
 conduitPut :: MonadThrow m => Conduit Put m ByteString
 conduitPutGeneric(conduitPut, (sourcePut x $$ CL.mapM_ yield))
+
+-- | Runs a putter repeatedly on a input stream, returns a packets.
+conduitMsg :: MonadThrow m => Conduit Put m ByteString
+conduitPutGeneric(conduitMsg, (yield (LBS.toStrict $ runPut x)))
 
 -- | Runs putter repeatedly on a input stream.
 -- Returns a lazy butestring so it's possible to use vectorized
