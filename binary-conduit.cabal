@@ -10,8 +10,8 @@ maintainer:          alexander.vershilov@gmail.com
 copyright:           2013 Alexander Vershilov
 category:            Conduit
 stability:           Experimental
-homepage:            http://github.com/qnikst/binary-conduit
-bug-reports:         http://github.com/qnikst/binary-conduit/issues
+homepage:            http://github.com/qnikst/conduit-binary
+bug-reports:         http://github.com/qnikst/conduit-binary/issues
 build-type:          Simple
 cabal-version:       >=1.8
 
@@ -35,4 +35,4 @@ test-suite test-binary-conduit
 
 source-repository head
   type: git
-  location: git://github.com/qnikst/binary-conduit/
+  location: git://github.com/qnikst/conduit-binary/
