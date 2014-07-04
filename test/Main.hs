@@ -88,7 +88,7 @@ instance Arbitrary A where
 prop_eq_plus :: (Binary a, Eq a) => [a] -> Property
 prop_eq_plus xs = monadicIO $ do
    x <- runExceptionT $ CL.sourceList xs $= CL.map encode =$= CL.map LBS.toStrict $$ CL.consume
-   y <- runExceptionT $ CL.sourceList xs $= conduitEncode $$ CL.consume
+   y <- runExceptionT $ CL.sourceList xs $= conduitMsgEncode $$ CL.consume
    case liftA2 (?==) x y of
      Left _  -> fail "exception in conduit"
      Right a -> stop a
@@ -105,7 +105,7 @@ main = hspec $ do
     describe "QC properties partial lists" $ do
         prop "break data in 2 parts" $ (prop_part2)
         prop "break data in 3 parts" $ (prop_part3)
-    describe "QC properites: CL.conduitEncode returns a correct chunks" $ do
+    describe "QC properites: CL.conduitMsgEncode returns a correct chunks" $ do
         prop "int"               $ (prop_eq_plus :: [Int] -> Property)
         prop "string"            $ (prop_eq_plus :: [String] -> Property)
         prop "maybe int"         $ (prop_eq_plus :: [Maybe Int] -> Property)

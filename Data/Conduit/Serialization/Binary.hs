@@ -4,6 +4,7 @@
 module Data.Conduit.Serialization.Binary
   ( conduitDecode
   , conduitEncode
+  , conduitMsgEncode
   , conduitGet
   , conduitPut
   , conduitPutList
