@@ -1,5 +1,5 @@
 name:                binary-conduit
-version:             1.2.2
+version:             1.2.3
 synopsis:            data serialization/deserialization conduit library
 description:         The binary-conduit package.
       Allow binary serialization using iterative conduit interface.
