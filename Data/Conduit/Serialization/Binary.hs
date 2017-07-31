@@ -27,7 +27,7 @@ import           Data.Conduit
 import qualified Data.Conduit.List    as CL
 import           Data.Typeable
 import qualified Data.Vector          as V
-import           Control.Monad.Trans.Resource 
+import           Control.Monad.Trans.Resource
      (MonadThrow
      , monadThrow)
 
@@ -52,7 +52,7 @@ conduitDecode = conduitGet get
 --
 -- This function produces a stream of bytes where for each input
 -- value you will have a number of 'ByteString's, and no boundary
--- between different values. 
+-- between different values.
 conduitEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
 conduitEncode = CL.map put =$= conduitPut
 
@@ -70,7 +70,7 @@ conduitEncode = CL.map put =$= conduitPut
 -- you interested in iterative packet serialization
 -- concider using 'conduitPutList' or 'conduitPutMany'
 --
-conduitMsgEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
+conduitMsgEncode :: Monad m => (Binary b) => Conduit b m ByteString
 conduitMsgEncode = CL.map put =$= conduitMsg
 
 -- | Runs getter repeatedly on a input stream.
@@ -98,31 +98,31 @@ name = conduit \
                     Just x  -> do { yi ; conduit}}
 
 -- | Runs putter repeatedly on a input stream, returns an output stream.
-conduitPut :: MonadThrow m => Conduit Put m ByteString
+conduitPut :: Monad m => Conduit Put m ByteString
 conduitPutGeneric(conduitPut, (sourcePut x $$ CL.mapM_ yield))
 
 -- | Runs a putter repeatedly on a input stream, returns a packets.
-conduitMsg :: MonadThrow m => Conduit Put m ByteString
+conduitMsg :: Monad m => Conduit Put m ByteString
 conduitPutGeneric(conduitMsg, (yield (LBS.toStrict $ runPut x)))
 
 -- | Runs putter repeatedly on a input stream.
 -- Returns a lazy butestring so it's possible to use vectorized
--- IO on the result either by calling' LBS.toChunks' or by 
+-- IO on the result either by calling' LBS.toChunks' or by
 -- calling 'Network.Socket.ByteString.Lazy.send'.
-conduitPutLBS :: MonadThrow m => Conduit Put m LBS.ByteString
+conduitPutLBS :: Monad m => Conduit Put m LBS.ByteString
 conduitPutGeneric(conduitPutLBS, yield (runPut x))
 
 -- | Vectorized variant of 'conduitPut' returning list contains
 -- all chunks from one element representation
-conduitPutList :: MonadThrow m => Conduit Put m [ByteString]
+conduitPutList :: Monad m => Conduit Put m [ByteString]
 conduitPutGeneric(conduitPutList, yield (LBS.toChunks (runPut x)))
 
 -- | Vectorized variant of 'conduitPut'.
-conduitPutMany :: MonadThrow m => Conduit Put m (V.Vector ByteString)
+conduitPutMany :: Monad m => Conduit Put m (V.Vector ByteString)
 conduitPutGeneric(conduitPutMany, yield (V.fromList (LBS.toChunks (runPut x))))
 
 -- | Create stream of strict bytestrings from 'Put' value.
-sourcePut :: MonadThrow m => Put -> Producer m ByteString
+sourcePut :: Monad m => Put -> Producer m ByteString
 sourcePut = CL.sourceList . LBS.toChunks . runPut
 
 -- | Decode message from input stream.

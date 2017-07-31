@@ -14,13 +14,13 @@ import Test.QuickCheck.Assertions
 import Test.QuickCheck.Property
 import Test.QuickCheck.Monadic
 import Test.QuickCheck
-import Control.Monad.Trans.Resource 
+import Control.Monad.Trans.Resource
 import GHC.Generics
 
 -- | check conduitEncode =$= conduitDecode == id
 prop_eq :: (Binary a,Eq a) => [a] -> Property
-prop_eq xs = monadicIO $ do 
-    xs' <- runExceptionT  $ CL.sourceList xs 
+prop_eq xs = monadicIO $ do
+    xs' <- runExceptionT  $ CL.sourceList xs
               $= enc xs
               =$= dec xs
               $$ CL.consume
@@ -28,7 +28,7 @@ prop_eq xs = monadicIO $ do
         Left e -> fail "exception"
         Right x -> assert $ x == xs
   where enc :: (Binary a, MonadThrow m) => [a] -> Conduit a m ByteString
-        enc _ = conduitEncode 
+        enc _ = conduitEncode
         dec :: (Binary a, MonadThrow m) => [a] -> Conduit ByteString m a
         dec _ = conduitDecode
 
@@ -43,7 +43,7 @@ prop_sink (a,b) = monadicIO $ do
     assert $ a == a'
     assert $ runPut (put b) == LBS.fromChunks b'
   where enc :: (Binary a, MonadThrow m) => a -> Conduit a m ByteString
-        enc _ = conduitEncode 
+        enc _ = conduitEncode
         dec :: (Binary a, MonadThrow m) => a -> Conduit ByteString m a
         dec _ = conduitDecode
 
@@ -84,14 +84,11 @@ instance Arbitrary A where
   arbitrary = A <$> fmap BS.pack arbitrary
                 <*> fmap BS.pack arbitrary
 
-
 prop_eq_plus :: (Binary a, Eq a) => [a] -> Property
 prop_eq_plus xs = monadicIO $ do
-   x <- runExceptionT $ CL.sourceList xs $= CL.map encode =$= CL.map LBS.toStrict $$ CL.consume
-   y <- runExceptionT $ CL.sourceList xs $= conduitMsgEncode $$ CL.consume
-   case liftA2 (?==) x y of
-     Left _  -> fail "exception in conduit"
-     Right a -> stop a
+   x <- CL.sourceList xs $= CL.map encode =$= CL.map LBS.toStrict $$ CL.consume :: PropertyM IO [BS.ByteString]
+   y <- CL.sourceList xs $= conduitMsgEncode $$ CL.consume :: PropertyM IO [BS.ByteString]
+   stop $ x ?== y :: PropertyM IO ()
 
 main = hspec $ do
     describe "QC properties: conduitEncode =$= conduitDecode == id" $ do
@@ -101,7 +98,7 @@ main = hspec $ do
         prop "either int string" $ (prop_eq :: [Either Int String] -> Property)
         prop "(Int,Int)"         $ (prop_sink :: (Int,Int) -> Property)
         prop "(String,String)"   $ (prop_sink :: (String,String) -> Property)
-	prop "A"                 $ (prop_eq   :: [A] -> Property)
+        prop "A"                 $ (prop_eq   :: [A] -> Property)
     describe "QC properties partial lists" $ do
         prop "break data in 2 parts" $ (prop_part2)
         prop "break data in 3 parts" $ (prop_part3)
@@ -121,10 +118,10 @@ main = hspec $ do
           x `shouldBe` [i]
       it "decodes message with list of values inside" $ do
           let is = [-32,45::Int]
-              ls = BS.concat . Prelude.concatMap (LBS.toChunks .runPut . put) $ is 
+              ls = BS.concat . Prelude.concatMap (LBS.toChunks .runPut . put) $ is
               (ls1,ls2) = BS.splitAt ((BS.length ls `div` 2) +1) ls
           x <- CL.sourceList [ls,ls] $= conduitDecode $$ CL.consume
           x' <- CL.sourceList [ls1,ls2] $= conduitDecode $$ CL.consume
           x `shouldBe` is++is
           x' `shouldBe` is
-         
+
