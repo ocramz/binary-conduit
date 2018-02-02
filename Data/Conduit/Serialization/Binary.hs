@@ -25,11 +25,10 @@ import qualified Data.ByteString.Lazy as LBS
 
 import           Data.Conduit
 import qualified Data.Conduit.List    as CL
+import           Data.Foldable
 import           Data.Typeable
 import qualified Data.Vector          as V
-import           Control.Monad.Trans.Resource
-     (MonadThrow
-     , monadThrow)
+import           Control.Monad.Catch (MonadThrow(..))
 
 
 data ParseError = ParseError
@@ -45,7 +44,7 @@ data ParseError = ParseError
 instance Exception ParseError
 
 -- | Runs default 'Decoder' repeatedly on a input stream.
-conduitDecode :: (Binary b, MonadThrow m) => Conduit ByteString m b
+conduitDecode :: (Binary b, MonadThrow m) => ConduitT ByteString b m ()
 conduitDecode = conduitGet get
 
 -- | Runs default encoder on a input stream.
@@ -53,8 +52,8 @@ conduitDecode = conduitGet get
 -- This function produces a stream of bytes where for each input
 -- value you will have a number of 'ByteString's, and no boundary
 -- between different values.
-conduitEncode :: (Binary b, MonadThrow m) => Conduit b m ByteString
-conduitEncode = CL.map put =$= conduitPut
+conduitEncode :: (Binary b, MonadThrow m) => ConduitT b ByteString m ()
+conduitEncode = CL.map put .| conduitPut
 
 
 -- | Runs default encoder on input stream.
@@ -70,11 +69,11 @@ conduitEncode = CL.map put =$= conduitPut
 -- you interested in iterative packet serialization
 -- concider using 'conduitPutList' or 'conduitPutMany'
 --
-conduitMsgEncode :: Monad m => (Binary b) => Conduit b m ByteString
-conduitMsgEncode = CL.map put =$= conduitMsg
+conduitMsgEncode :: Monad m => (Binary b) => ConduitT b ByteString m ()
+conduitMsgEncode = CL.map put .| conduitMsg
 
 -- | Runs getter repeatedly on a input stream.
-conduitGet :: MonadThrow m => Get b -> Conduit ByteString m b
+conduitGet :: MonadThrow m => Get b -> ConduitT ByteString b m ()
 conduitGet g = start
   where
     start = do mx <- await
@@ -85,7 +84,7 @@ conduitGet g = start
                           if BS.null bs
                             then start
                             else go (runGetIncremental g `pushChunk` bs)
-    go (Fail u o e)  = monadThrow (ParseError u o e)
+    go (Fail u o e)  = throwM (ParseError u o e)
     go (Partial n)   = await >>= (go . n)
 
 -- \o/
@@ -98,37 +97,37 @@ name = conduit \
                     Just x  -> do { yi ; conduit}}
 
 -- | Runs putter repeatedly on a input stream, returns an output stream.
-conduitPut :: Monad m => Conduit Put m ByteString
-conduitPutGeneric(conduitPut, (sourcePut x $$ CL.mapM_ yield))
+conduitPut :: Monad m => ConduitT Put ByteString m ()
+conduitPutGeneric(conduitPut, (traverse_ yield (LBS.toChunks $ runPut x)))
 
 -- | Runs a putter repeatedly on a input stream, returns a packets.
-conduitMsg :: Monad m => Conduit Put m ByteString
+conduitMsg :: Monad m => ConduitT Put ByteString m ()
 conduitPutGeneric(conduitMsg, (yield (LBS.toStrict $ runPut x)))
 
 -- | Runs putter repeatedly on a input stream.
 -- Returns a lazy butestring so it's possible to use vectorized
 -- IO on the result either by calling' LBS.toChunks' or by
 -- calling 'Network.Socket.ByteString.Lazy.send'.
-conduitPutLBS :: Monad m => Conduit Put m LBS.ByteString
+conduitPutLBS :: Monad m => ConduitT Put LBS.ByteString m ()
 conduitPutGeneric(conduitPutLBS, yield (runPut x))
 
 -- | Vectorized variant of 'conduitPut' returning list contains
 -- all chunks from one element representation
-conduitPutList :: Monad m => Conduit Put m [ByteString]
+conduitPutList :: Monad m => ConduitT Put [ByteString] m ()
 conduitPutGeneric(conduitPutList, yield (LBS.toChunks (runPut x)))
 
 -- | Vectorized variant of 'conduitPut'.
-conduitPutMany :: Monad m => Conduit Put m (V.Vector ByteString)
+conduitPutMany :: Monad m => ConduitT Put (V.Vector ByteString) m ()
 conduitPutGeneric(conduitPutMany, yield (V.fromList (LBS.toChunks (runPut x))))
 
 -- | Create stream of strict bytestrings from 'Put' value.
-sourcePut :: Monad m => Put -> Producer m ByteString
+sourcePut :: Monad m => Put -> ConduitT z ByteString m ()
 sourcePut = CL.sourceList . LBS.toChunks . runPut
 
 -- | Decode message from input stream.
-sinkGet :: MonadThrow m => Get b -> Consumer ByteString m b
+sinkGet :: MonadThrow m => Get b -> ConduitT ByteString z m b
 sinkGet f = sink (runGetIncremental f)
   where
       sink (Done bs _ v)  = leftover bs >> return v
-      sink (Fail u o e)   = monadThrow (ParseError u o e)
+      sink (Fail u o e)   = throwM (ParseError u o e)
       sink (Partial next) = await >>= sink . next

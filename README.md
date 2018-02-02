@@ -11,8 +11,8 @@ The binary-conduit package.
 
 Allow binary serialization [1] using iterative conduit [2] interface.
 
-[1] http://hackage.haskell.org/package/binary-0.6.4.0
-[2] http://hackage.haskell.org/package/conduit-1.0.4.2
+[1] http://hackage.haskell.org/package/binary
+[2] http://hackage.haskell.org/package/conduit
 
 Contributors:
 
