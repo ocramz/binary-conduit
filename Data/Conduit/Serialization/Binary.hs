@@ -17,6 +17,7 @@ module Data.Conduit.Serialization.Binary
   where
 
 import           Control.Exception
+import           Control.Monad (unless)
 import           Data.Binary
 import           Data.Binary.Get
 import           Data.Binary.Put
@@ -128,6 +129,9 @@ sourcePut = CL.sourceList . LBS.toChunks . runPut
 sinkGet :: MonadThrow m => Get b -> ConduitT ByteString z m b
 sinkGet f = sink (runGetIncremental f)
   where
-      sink (Done bs _ v)  = leftover bs >> return v
+      sink (Done bs _ v)  = do
+        unless (BS.null bs) $
+          leftover bs
+        return v
       sink (Fail u o e)   = throwM (ParseError u o e)
       sink (Partial next) = await >>= sink . next
