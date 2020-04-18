@@ -1,6 +1,8 @@
 /cabal-dev/
 /dist/
 /dist-newstyle/
+/.stack-work/
+stack.yaml.lock
 *.o
 *.hi
 *.dump-simpl
