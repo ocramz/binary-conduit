@@ -59,7 +59,7 @@ conduitEncode = CL.map put .| conduitPut
 
 -- | Runs default encoder on input stream.
 --
--- This function produces a ByteString per each incomming packet,
+-- This function produces a ByteString per each incoming packet,
 -- it may be useful in datagram based protocols.
 -- Function maintains following property
 --
@@ -68,7 +68,7 @@ conduitEncode = CL.map put .| conduitPut
 -- This invariant is maintaind by the cost of additional data copy,
 -- so if you packets can be serialized to the large data chunks or
 -- you interested in iterative packet serialization
--- concider using 'conduitPutList' or 'conduitPutMany'
+-- consider using 'conduitPutList' or 'conduitPutMany'
 --
 conduitMsgEncode :: Monad m => (Binary b) => ConduitT b ByteString m ()
 conduitMsgEncode = CL.map put .| conduitMsg
